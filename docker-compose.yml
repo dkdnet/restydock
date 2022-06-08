@@ -1,0 +1,508 @@
+version: '3.5'
+
+networks:
+  frontend:
+    driver: ${NETWORKS_DRIVER}
+    ipam:
+      config:
+        - subnet: ${NETWORKS_DRIVER_SUBNET_FRONTEND}
+          gateway: ${NETWORKS_DRIVER_GATEWAY_FRONTEND}
+  backend:
+    driver: ${NETWORKS_DRIVER}
+    ipam:
+      config:
+        - subnet: ${NETWORKS_DRIVER_SUBNET_BACKEND}
+          gateway: ${NETWORKS_DRIVER_GATEWAY_BACKEND}
+volumes:
+  mysql:
+    driver: ${VOLUMES_DRIVER}
+  postgres:
+    driver: ${VOLUMES_DRIVER}
+  memcached:
+    driver: ${VOLUMES_DRIVER}
+  redis:
+    driver: ${VOLUMES_DRIVER}
+  mariadb:
+    driver: ${VOLUMES_DRIVER}
+  mongo:
+    driver: ${VOLUMES_DRIVER}
+  phpmyadmin:
+    driver: ${VOLUMES_DRIVER}
+  elasticsearch:
+    driver: ${VOLUMES_DRIVER}
+
+services:
+  resty:
+
+    # image: openresty/openresty:1.19.9.1-5-bionic #bionic 对比lor框架较友好
+    #    image: tonybjc/lor:1.0 #此镜像由./openresty/Dockerfile生成，换了国内源，安装了lor框架和lua-resty-auto-ssl,只需在nginx配置文件配一下域名就可以自动获取ssl
+    build:
+      context: ./openresty
+      args:
+        - INSTALL_SSL=${OPENRESTY_INSTALL_SSL}
+        - INSTALL_MONGO_MOOGOO=${OPENRESTY_INSTALL_MONGO_MOOGOO}
+        - INSTALL_MONGO_MONGOL=${OPENRESTY_INSTALL_MONGO_MONGOL}
+        - INSTALL_POSTGRES=${OPENRESTY_INSTALL_POSTGRES}
+    volumes:
+      - ${APP_CODE_PATH_HOST}:/code # 注意必须是 /xxx,不能是/root/xxx,否则会404
+    ports:
+      - "${OPENRESTY_HOST_HTTP_PORT}:8888"
+      - "${OPENRESTY_HOST_HTTPS_PORT}:443"
+    environment:
+      - TZ=${WORKSPACE_TIMEZONE}
+    depends_on:
+      - mariadb
+      - postgres
+      #      - postgres-postgis
+      - mongo
+      - redis
+      # - elasticsearch
+      # - kibana
+      # - kafka
+    stdin_open: true # Docker镜像的缺省命令是bash，如果不加 -it，bash命令执行了自动会退出，加-it后docker命令
+    tty: true # 会为容器分配一个伪终端，并接管其stdin/stdout支持交互操作，这时候bash命令不会自动退出.
+    networks:
+      frontend:
+        ipv4_address: ${OPENRESTY_IPV4_ADDRESS_FRONTEND}
+      backend:
+        ipv4_address: ${OPENRESTY_IPV4_ADDRESS_BACKEND}
+
+  ###########################################################
+  ######################## Databases ########################
+  ###########################################################
+
+  ### MariaDB ##############################################
+  mariadb:
+    build:
+      context: ./mariadb
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+        - MARIADB_VERSION=${MARIADB_VERSION}
+    volumes:
+      - ${DATA_PATH_HOST}/mariadb:/var/lib/mysql
+      - ${MARIADB_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
+    ports:
+      - "${MARIADB_PORT}:3306"
+    environment:
+      - TZ=${WORKSPACE_TIMEZONE}
+      - MYSQL_DATABASE=${MARIADB_DATABASE}
+      - MYSQL_USER=${MARIADB_USER}
+      - MYSQL_PASSWORD=${MARIADB_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+    networks:
+      backend:
+        ipv4_address: ${MARIADB_IPV4_ADDRESS_BACKEND_IP}
+
+  ### MySQL ################################################
+  mysql:
+    build:
+      context: ./mysql
+      args:
+        - MYSQL_VERSION=${MYSQL_VERSION}
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - TZ=${WORKSPACE_TIMEZONE}
+    volumes:
+      - ${DATA_PATH_HOST}/mysql:/var/lib/mysql
+      - ${MYSQL_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
+    ports:
+      - "${MYSQL_PORT}:3306"
+    networks:
+      backend:
+        ipv4_address: ${MYSQL_IPV4_ADDRESS_BACKEND_IP}
+
+  ### PostgreSQL ###########################################
+  postgres:
+    build:
+      context: ./postgres
+      args:
+        - POSTGRES_VERSION=${POSTGRES_VERSION}
+    volumes:
+      - ${DATA_PATH_HOST}/postgres:/var/lib/postgresql/data
+      - ${POSTGRES_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    environment:
+      - TZ=${WORKSPACE_TIMEZONE}
+      - PGTZ=${WORKSPACE_TIMEZONE}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks:
+      backend:
+        ipv4_address: ${POSTGRES_IPV4_ADDRESS_BACKEND_IP}
+
+  ### PostgreSQL PostGis ###################################
+  postgres-postgis:
+    build:
+      context: ./postgres-postgis
+      args:
+        - POSTGIS_VERSION=${POSTGIS_VERSION}
+        - INSTALL_PGSQL_HTTP_FOR_POSTGIS13=${POSTGIS_INSTALL_PGSQL_HTTP_FOR_POSTGIS13}
+    volumes:
+      - ${DATA_PATH_HOST}/postgis:/var/lib/postgresql/data
+    ports:
+      - "${POSTGIS_PORT}:5432"
+    environment:
+      - TZ=${WORKSPACE_TIMEZONE}
+      - PGTZ=${WORKSPACE_TIMEZONE}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks:
+      backend:
+        ipv4_address: ${POSTGIS_IPV4_ADDRESS_BACKEND_IP}
+
+  ### MongoDB ##############################################
+  mongo:
+    build:
+      context: ./mongo
+      args:
+        - MONGO_VERSION=${MONGO_VERSION}
+    ports:
+      - "${MONGODB_PORT}:27017"
+    environment:
+      - TZ=${WORKSPACE_TIMEZONE}
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+    volumes:
+      - ${DATA_PATH_HOST}/mongo:/data/db
+      - ${DATA_PATH_HOST}/mongo_config:/data/configdb
+    networks:
+      backend:
+        ipv4_address: ${MONGODB_IPV4_ADDRESS_BACKEND_IP}
+
+  ### COUCHDB ###################################################
+  couchdb:
+    build:
+      context: ./couchdb
+    volumes:
+      - ${DATA_PATH_HOST}/couchdb/data:/opt/couchdb/data
+    ports:
+      - "${COUCHDB_PORT}:5984"
+    networks:
+      backend:
+        ipv4_address: ${COUCHDB_IPV4_ADDRESS_BACKEND_IP}
+
+  ###########################################################
+  ######################### Caches ##########################
+  ###########################################################
+
+  ### Memcached ############################################
+  memcached:
+    build: ./memcached
+    volumes:
+      - ${DATA_PATH_HOST}/memcached:/var/lib/memcached
+    ports:
+      - "${MEMCACHED_HOST_PORT}:11211"
+    depends_on:
+      - php-fpm
+    networks:
+      backend:
+        ipv4_address: ${MEMCACHED_IPV4_ADDRESS_BACKEND_IP}
+
+  ### Redis ################################################
+  redis:
+    build: ./redis
+    volumes:
+      - ${DATA_PATH_HOST}/redis:/data
+    ports:
+      - "${REDIS_PORT}:6379"
+    environment:
+      - TZ=${WORKSPACE_TIMEZONE}
+    networks:
+      backend:
+        ipv4_address: ${REDIS_IPV4_ADDRESS_BACKEND_IP}
+
+  ### Redis Cluster ##########################################
+  redis-cluster:
+    build: ./redis-cluster
+    ports:
+      - "${REDIS_CLUSTER_PORT_RANGE}:7000-7005"
+    networks:
+      backend:
+        ipv4_address: ${REDIS_CLUSTER_IPV4_ADDRESS_BACKEND_IP}
+
+  ### SSDB ################################################
+  ssdb:
+    build: ./ssdb
+    volumes:
+      - ${DATA_PATH_HOST}/ssdb:/data
+    ports:
+      - "${SSDB_PORT}:8888"
+    networks:
+      backend:
+        ipv4_address: ${SSDB_IPV4_ADDRESS_BACKEND_IP}
+
+  ###########################################################
+  ########################### MQ ############################
+  ###########################################################
+
+  ### RabbitMQ #############################################
+  rabbitmq:
+    build: ./rabbitmq
+    ports:
+      - "${RABBITMQ_NODE_HOST_PORT}:5672"
+      - "${RABBITMQ_MANAGEMENT_HTTP_HOST_PORT}:15672"
+      - "${RABBITMQ_MANAGEMENT_HTTPS_HOST_PORT}:15671"
+      - "${RABBITMQ_WEB_STOMP_HOST_PORT}:15674"
+    privileged: true
+    hostname: laradock-rabbitmq
+    volumes:
+      - ${DATA_PATH_HOST}/rabbitmq:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./rabbitmq/management_agent.disable_metrics_collector.conf:/etc/rabbitmq/conf.d/management_agent.disable_metrics_collector.conf
+    depends_on:
+      - php-fpm
+    networks:
+      backend:
+        ipv4_address: ${RABBITMQ_IPV4_ADDRESS_BACKEND_IP}
+
+  ### ZooKeeper #########################################
+  zookeeper:
+    build: ./zookeeper
+    volumes:
+      - ${DATA_PATH_HOST}/zookeeper/data:/data
+      - ${DATA_PATH_HOST}/zookeeper/datalog:/datalog
+    ports:
+      - "${ZOOKEEPER_PORT}:2181"
+    networks:
+      backend:
+        ipv4_address: ${ZOOKEEPER_IPV4_ADDRESS_BACKEND_IP}
+
+  ### kafka ####################################################
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ADVERTISED_HOST_NAME: 127.0.0.1
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://127.0.0.1:9092
+      KAFKA_MESSAGE_MAX_BYTES: 2000000
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      TZ: ${WORKSPACE_TIMEZONE}
+    volumes:
+      - ${DATA_PATH_HOST}/kafka:/kafka
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - zookeeper
+    networks:
+      backend:
+        ipv4_address: ${KAFKA_IPV4_ADDRESS_BACKEND_IP}
+
+  ### kafka-manager ###########################################
+  kafka-manager:
+    image: sheepkiller/kafka-manager
+    ports:
+      - 9020:9000
+    environment:
+      ZK_HOSTS: zookeeper:2181
+    depends_on:
+      - zookeeper
+      - kafka
+    networks:
+      backend:
+        ipv4_address: ${KAFKA_MANAGER_IPV4_ADDRESS_BACKEND_IP}
+
+  ###########################################################
+  ###################### search engine ######################
+  ###########################################################
+
+  ### ElasticSearch ########################################
+  elasticsearch:
+    build:
+      context: ./elasticsearch
+      args:
+        - ELK_VERSION=${ELK_VERSION}
+    volumes:
+      - elasticsearch:/usr/share/elasticsearch/data
+    environment:
+      - TZ=${WORKSPACE_TIMEZONE}
+      - cluster.name=laradock-cluster
+      - node.name=laradock-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - cluster.initial_master_nodes=laradock-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "${ELASTICSEARCH_HOST_HTTP_PORT}:9200"
+      - "${ELASTICSEARCH_HOST_TRANSPORT_PORT}:9300"
+    depends_on:
+      - resty
+    networks:
+      frontend:
+        ipv4_address: ${ELASTICSEARCH_IPV4_ADDRESS_FRONTEND_IP}
+      backend:
+        ipv4_address: ${ELASTICSEARCH_IPV4_ADDRESS_BACKEND_IP}
+
+  ### Logstash ##############################################
+  logstash:
+    build:
+      context: ./logstash
+      args:
+        - ELK_VERSION=${ELK_VERSION}
+    volumes:
+      - './logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml'
+      - './logstash/pipeline:/usr/share/logstash/pipeline'
+    ports:
+      - '5001:5001'
+    environment:
+      LS_JAVA_OPTS: '-Xmx1g -Xms1g'
+    env_file:
+      - .env
+    networks:
+      frontend:
+        ipv4_address: ${LOGSTASH_IPV4_ADDRESS_FRONTEND_IP}
+      backend:
+        ipv4_address: ${LOGSTASH_IPV4_ADDRESS_BACKEND_IP}
+    depends_on:
+      - elasticsearch
+
+  ### Kibana ##############################################
+  kibana:
+    build:
+      context: ./kibana
+      args:
+        - ELK_VERSION=${ELK_VERSION}
+    ports:
+      - "${KIBANA_HTTP_PORT}:5601"
+    depends_on:
+      - elasticsearch
+    environment:
+      - TZ=${WORKSPACE_TIMEZONE}
+    networks:
+      frontend:
+        ipv4_address: ${KIBANA_IPV4_ADDRESS_FRONTEND_IP}
+      backend:
+        ipv4_address: ${KIBANA_IPV4_ADDRESS_BACKEND_IP}
+
+  ### Solr ################################################
+  solr:
+    build:
+      context: ./solr
+      args:
+        - SOLR_VERSION=${SOLR_VERSION}
+        - SOLR_DATAIMPORTHANDLER_MYSQL=${SOLR_DATAIMPORTHANDLER_MYSQL}
+        - SOLR_DATAIMPORTHANDLER_MSSQL=${SOLR_DATAIMPORTHANDLER_MSSQL}
+    volumes:
+      - ${DATA_PATH_HOST}/solr:/opt/solr/server/solr/mycores
+    ports:
+      - "${SOLR_PORT}:8983"
+    networks:
+      backend:
+        ipv4_address: ${SOLR_IPV4_ADDRESS_BACKEND_IP}
+
+  ###########################################################
+  ############## Database online admin tools ################
+  ###########################################################
+
+  ### phpMyAdmin ###########################################
+  phpmyadmin:
+    build: ./phpmyadmin
+    environment:
+      - PMA_ARBITRARY=1
+      - MYSQL_USER=${PMA_USER}
+      - MYSQL_PASSWORD=${PMA_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${PMA_ROOT_PASSWORD}
+      - MAX_EXECUTION_TIME=${PMA_MAX_EXECUTION_TIME}
+      - MEMORY_LIMIT=${PMA_MEMORY_LIMIT}
+      - UPLOAD_LIMIT=${PMA_UPLOAD_LIMIT}
+    ports:
+      - "${PMA_PORT}:80"
+    depends_on:
+      - "${PMA_DB_ENGINE}"
+    networks:
+      frontend:
+        ipv4_address: ${PMA_IPV4_ADDRESS_FRONTEND_IP}
+      backend:
+        ipv4_address: ${PMA_IPV4_ADDRESS_BACKEND_IP}
+
+  ### pgAdmin ##############################################
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      - "PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}"
+      - "PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}"
+    ports:
+      - "${PGADMIN_PORT}:80"
+    volumes:
+      - ${DATA_PATH_HOST}/pgadmin:/var/lib/pgadmin
+    #    depends_on:
+    #      - postgres-postgis
+    #      - postgres
+    networks:
+      frontend:
+        ipv4_address: ${PGADMIN_IPV4_ADDRESS_FRONTEND_IP}
+      backend:
+        ipv4_address: ${PGADMIN_IPV4_ADDRESS_BACKEND_IP}
+
+  ### REDISWEBUI ################################################
+  redis-webui:
+    build:
+      context: ./redis-webui
+    environment:
+      - ADMIN_USER=${REDIS_WEBUI_USERNAME}
+      - ADMIN_PASS=${REDIS_WEBUI_PASSWORD}
+      - REDIS_1_HOST=${REDIS_WEBUI_CONNECT_HOST}
+      - REDIS_1_PORT=${REDIS_WEBUI_CONNECT_PORT}
+    networks:
+      backend:
+        ipv4_address: ${REDIS_WEBUI_IPV4_ADDRESS_BACKEND_IP}
+    ports:
+      - "${REDIS_WEBUI_PORT}:80"
+    depends_on:
+      - redis
+
+  ### MongoWebUI ################################################
+  mongo-webui:
+    build:
+      context: ./mongo-webui
+    environment:
+      - ROOT_URL=${MONGO_WEBUI_ROOT_URL}
+      - MONGO_URL=${MONGO_WEBUI_MONGO_URL}
+      - INSTALL_MONGO=${MONGO_WEBUI_INSTALL_MONGO}
+    volumes:
+      - ${DATA_PATH_HOST}/mongo-webui:/data/db
+    ports:
+      - "${MONGO_WEBUI_PORT}:3000"
+    networks:
+      backend:
+        ipv4_address: ${MONGO_WEBUI_IPV4_ADDRESS_BACKEND_IP}
+    depends_on:
+      - mongo
+
+  ###########################################################
+  ###################### DevOps tools #######################
+  ###########################################################
+
+  ### Jenkins ###################################################
+  # 装完插件会占用300多M空间
+  jenkins:
+    build: ./jenkins
+    environment:
+      - JAVA_OPTS="-Djava.awt.headless=true"
+      - TZ=${WORKSPACE_TIMEZONE}
+    ports:
+      - "${JENKINS_HOST_SLAVE_AGENT_PORT}:50000"
+      - "${JENKINS_HOST_HTTP_PORT}:8080"
+    privileged: true
+    volumes:
+      - ${JENKINS_HOME}:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      frontend:
+        ipv4_address: ${JENKINS_IPV4_ADDRESS_FRONTEND_IP}
+      backend:
+        ipv4_address: ${JENKINS_IPV4_ADDRESS_BACKEND_IP}
