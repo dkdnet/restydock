@@ -208,52 +208,11 @@ ENV LUA_CPATH="/usr/local/openresty/site/lualib/?.so;/usr/local/openresty/lualib
 # 安装moggodb驱动依赖
 RUN apt install libbson-1.0-0 -y
 
-# 生效代码
-# RUN mkdir -p /usr/local/openresty/ssl
-# RUN mkdir -p /usr/local/openresty/ssl/resty-auto-ssl
-# RUN chown nobody /usr/local/openresty/ssl/resty-auto-ssl
-# RUN chgrp nogroup /usr/local/openresty/ssl/resty-auto-ssl
-# RUN openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
-#   -subj '/CN=sni-support-required-for-valid-ssl' \
-#   -keyout /usr/local/openresty/ssl/resty-auto-ssl-fallback.key \
-#   -out /usr/local/openresty/ssl/resty-auto-ssl-fallback.crt
-# RUN luarocks install lua-resty-auto-ssl
-
-
-
-# 下面是问题代码
-# ARG INSTALL_SSL=false
-
-# RUN if [ ${INSTALL_SSL} = true ]; then \
-#   mkdir -p /usr/local/openresty/ssl && \
-#   mkdir -p /usr/local/openresty/ssl/resty-auto-ssl && \
-#   chown nobody /usr/local/openresty/ssl/resty-auto-ssl && \
-#   chgrp nogroup /usr/local/openresty/ssl/resty-auto-ssl && \
-#   openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
-#   -subj '/CN=sni-support-required-for-valid-ssl' \
-#   -keyout /usr/local/openresty/ssl/resty-auto-ssl-fallback.key \
-#   -out /usr/local/openresty/ssl/resty-auto-ssl-fallback.crt && \
-#   luarocks install lua-resty-auto-ssl && \
-#   ln -s /usr/local/openresty/openssl/include/openssl/ /include \
-#   ;fi
-
-
 ###########################################################################
 # Install the lua-resty-auto-ssl extension 此模块最好国外安装
 ###########################################################################
 ARG INSTALL_SSL=false
 
-# RUN if [ ${INSTALL_SSL} = true ]; then \
-#   mkdir -p /usr/local/openresty/ssl && \
-#   mkdir -p /usr/local/openresty/ssl/resty-auto-ssl && \
-#   chown nobody /usr/local/openresty/ssl/resty-auto-ssl && \
-#   chgrp nogroup /usr/local/openresty/ssl/resty-auto-ssl && \
-#   openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
-#   -subj '/CN=sni-support-required-for-valid-ssl' \
-#   -keyout /usr/local/openresty/ssl/resty-auto-ssl-fallback.key \
-#   -out /usr/local/openresty/ssl/resty-auto-ssl-fallback.crt && \
-#   luarocks install lua-resty-auto-ssl \
-#   ;fi
 RUN if [ ${INSTALL_SSL} = true ]; then \
   mkdir -p /usr/local/openresty/ssl && \
   mkdir -p /usr/local/openresty/ssl/resty-auto-ssl && \
@@ -296,11 +255,6 @@ RUN if [ ${INSTALL_MONGO_MOOGOO} = true ]; then \
 
 RUN if [ ${INSTALL_MONGO_MOOGOO} = true ]; then \
   # Install the libbson dependents latest
-  # cd /temp && \
-  # git clone git://github.com/mongodb/libbson.git && \
-  # cd libbson && ./autogen.sh && make && make install && \
-  # make clean && make LUA_INCLUDE_DIR=/usr/local/openresty/luajit/include/luajit-2.1 LUA_CMODULE_DIR=/usr/local/openresty/lualib LUA_MODULE_DIR=/usr/local/openresty/lualib CBSON_CFLAGS="-g -fpic -I/usr/local/include/libbson-1.0/ " CC=cc \
-  # ;fi
   cd /temp && \
   git clone -b 1.7.0 https://github.com/mongodb/libbson.git && \
   cd libbson && ./autogen.sh && make && make install && \
@@ -345,7 +299,7 @@ RUN if [ ${INSTALL_POSTGRES} = true ]; then \
   ;fi
 
 ###########################################################################
-# Install: lor
+# Install: lor framework
 ###########################################################################
 COPY lor /lor
 WORKDIR /lor
