@@ -49,8 +49,12 @@ ARG RESTY_CONFIG_OPTIONS="\
   --with-stream \
   --with-stream_ssl_module \
   --with-threads \
+  --with-http_postgres_module \
   "
-ARG RESTY_CONFIG_OPTIONS_MORE="--with-http_postgres_module"
+ARG RESTY_CONFIG_OPTIONS_MORE="\
+    --user=www \
+    --group=www \
+    "
 ARG RESTY_LUAJIT_OPTIONS="--with-luajit-xcflags='-DLUAJIT_NUMMODE=2 -DLUAJIT_ENABLE_LUA52COMPAT'"
 
 ARG RESTY_ADD_PACKAGE_BUILDDEPS=""
@@ -82,13 +86,10 @@ LABEL resty_eval_pre_configure="${RESTY_EVAL_PRE_CONFIGURE}"
 LABEL resty_eval_post_make="${RESTY_EVAL_POST_MAKE}"
 
 ARG DEBIAN_FRONTEND=noninteractive
-# RUN sed -i s@/ports.ubuntu.com/@/mirrors.163.com/@g /etc/apt/sources.list
-# RUN sed -i s@/archive.ubuntu.com/@/mirrors.163.com/@g /etc/apt/sources.list
 
 ###########################################################################
-# Mongo: lua-resty-mongol
+# 切换国内源
 ###########################################################################
-# 安装moggodb驱动依赖 RUN apt install libbson-1.0-0 -y
 ARG CHANGE_SOURCE=false
 RUN if [ ${CHANGE_SOURCE} = true ]; then \
   RUN sed -i s@/ports.ubuntu.com/@/mirrors.163.com/@g /etc/apt/sources.list && \
@@ -96,6 +97,8 @@ RUN if [ ${CHANGE_SOURCE} = true ]; then \
   RUN export node_mirror=https://npm.taobao.org/mirrors/node/ && \
   RUN export npm_mirror=https://npm.taobao.org/mirrors/npm/ \
   ;fi
+
+
 
 RUN apt-get clean
 RUN apt-get update
@@ -312,6 +315,15 @@ WORKDIR /code
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
 # 添加nvm国内源
 
+# 为lor框架设置用户和用户组
+# Add user for laravel application
+RUN groupadd -g 1000 www
+RUN useradd -u 1000 -ms /bin/bash -g www www
+
+WORKDIR /
+RUN mkdir www
+RUN chown -R www:www /www
+WORKDIR /www/code
 
 
 
