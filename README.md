@@ -10,6 +10,16 @@ Docker version 20.10.17
 
 Docker Compose version v2.2.3
 
+### 进展 Progress
+
+目前Openresty镜像已经已经安装了resty.mysql、lua-resty-moongoo 和 pgmoon 和Lor开发框架，
+并都能用Lor生成的应用成功连接。 Openresty容器里Lor应用的 user 是www:www 默认在/www/code
+下有权限，也就是对应宿主机里 restydock目录的上级目录。大家的代码 要放在 restydock 目录的上级目录里。
+
+成功运行并通过简单测试的容器有：
+resty mariadb mongo postgres phpmyadmin pgadmin 
+经测试mariadb:last mongo:5.0.9 postgres:14.3-alpine 能通过resty.mysql、lua-resty-moongoo 和 pgmoon 连resty，其他容器有待测试。
+
 ### 使用前方法 quik start
 
 #### 第一步 基于.env.example生产自己的.env文件。First copy .env.example file to .env file
