@@ -36,7 +36,7 @@ lua-resty-moongoo and pgmoon. other containers are to be tested.
 ```bash
 cp .env.example .env
 ```
-#### 第二步 修改密码。 Second first change password
+#### 第二步 修改密码。 Second change password
 把下面的"mySecret"改成自己的密码比如 RRpCc%nCEWSf6xJD
 
 before you use restydock, change password the "mySecret" to your password such as RRpCc%nCEWSf6xJD
