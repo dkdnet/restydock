@@ -208,7 +208,7 @@ ENV LUA_CPATH="/usr/local/openresty/site/lualib/?.so;/usr/local/openresty/lualib
 
 # CMD ["/usr/local/openresty/bin/openresty", "-g", "daemon off;"]
 
-# 安装moggodb驱动依赖
+# 安装moggodb驱动lua-resty-mongol的依赖
 RUN apt install libbson-1.0-0 -y
 
 ###########################################################################
@@ -287,7 +287,7 @@ RUN if [ ${INSTALL_MONGO_MONGOL} = true ]; then \
   # Install the lua-cbson dependents
   cd /temp && \
   git clone https://github.com/bigplum/lua-resty-mongol.git && \
-  cd ua-resty-mongol && \
+  cd lua-resty-mongol && \
   make install \
   ;fi
 
@@ -307,7 +307,6 @@ RUN if [ ${INSTALL_POSTGRES} = true ]; then \
 COPY lor /lor
 WORKDIR /lor
 RUN make install
-WORKDIR /code
 
 ###########################################################################
 # Install: nvm
@@ -315,8 +314,10 @@ WORKDIR /code
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
 # 添加nvm国内源
 
+###########################################################################
 # 为lor框架设置用户和用户组
 # Add user for laravel application
+###########################################################################
 RUN groupadd -g 1000 www
 RUN useradd -u 1000 -ms /bin/bash -g www www
 
@@ -324,6 +325,38 @@ WORKDIR /
 RUN mkdir www
 RUN chown -R www:www /www
 WORKDIR /www/code
+
+
+
+############################################################################
+# Install: fish shell 3
+############################################################################ \
+ARG INSTALL_FISH=false
+RUN if [ ${INSTALL_FISH} = true ]; then \
+  # Install fish shell
+  apt install software-properties-common -y && \
+  apt-add-repository ppa:fish-shell/release-3 -y && \
+  apt update -y && \
+  apt install fish -y \
+  ;fi
+
+############################################################################
+# Install: net-tools lsof vim lrzsz
+############################################################################
+ARG INSTALL_NETTOOLS=false
+RUN if [ ${INSTALL_NETTOOLS} = true ]; then \
+  apt install lsof net-tools vim lrzsz -y \
+  ;fi
+
+############################################################################
+# 可实现监测配置文件改动实现自动启动 auto reload on change of config file
+############################################################################
+ARG INSTALL_INOTIFY_TOOLS=false
+RUN if [ ${INSTALL_INOTIFY_TOOLS} = true ]; then \
+  apt install inotify-tools -y \
+  ;fi
+
+
 
 
 
