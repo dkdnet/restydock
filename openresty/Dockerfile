@@ -212,6 +212,18 @@ ENV LUA_CPATH="/usr/local/openresty/site/lualib/?.so;/usr/local/openresty/lualib
 RUN apt install libbson-1.0-0 -y
 
 ###########################################################################
+# 为lor框架设置用户和用户组
+# Add user for laravel application
+###########################################################################
+RUN groupadd -g 1000 www
+RUN useradd -u 1000 -ms /bin/bash -g www www
+
+WORKDIR /
+RUN mkdir www
+RUN chown -R www:www /www
+
+
+###########################################################################
 # Install the lua-resty-auto-ssl extension 此模块最好国外安装
 ###########################################################################
 ARG INSTALL_SSL=false
@@ -219,8 +231,8 @@ ARG INSTALL_SSL=false
 RUN if [ ${INSTALL_SSL} = true ]; then \
   mkdir -p /usr/local/openresty/ssl && \
   mkdir -p /usr/local/openresty/ssl/resty-auto-ssl && \
-  chown nobody /usr/local/openresty/ssl/resty-auto-ssl && \
-  chgrp nogroup /usr/local/openresty/ssl/resty-auto-ssl && \
+  chown www /usr/local/openresty/ssl/resty-auto-ssl && \
+  chgrp www /usr/local/openresty/ssl/resty-auto-ssl && \
   openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
   -subj '/CN=sni-support-required-for-valid-ssl' \
   -keyout /usr/local/openresty/ssl/resty-auto-ssl-fallback.key \
@@ -314,20 +326,6 @@ RUN make install
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
 # 添加nvm国内源
 
-###########################################################################
-# 为lor框架设置用户和用户组
-# Add user for laravel application
-###########################################################################
-RUN groupadd -g 1000 www
-RUN useradd -u 1000 -ms /bin/bash -g www www
-
-WORKDIR /
-RUN mkdir www
-RUN chown -R www:www /www
-WORKDIR /www/code
-
-
-
 ############################################################################
 # Install: fish shell 3
 ############################################################################ \
@@ -360,7 +358,7 @@ RUN if [ ${INSTALL_INOTIFY_TOOLS} = true ]; then \
 
 
 
-
+WORKDIR /www/code
 ###########################################################################
 # Use SIGQUIT instead of default SIGTERM to cleanly drain requests
 # See https://github.com/openresty/docker-openresty/blob/master/README.md#tips--pitfalls
