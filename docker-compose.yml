@@ -33,17 +33,17 @@ volumes:
 
 services:
   resty:
-#    image: dkdnet/openresty:1.21.4.1 #此镜像由./openresty/Dockerfile生成，在香港机器上build成功，安装了lor框架和lua-resty-auto-ssl,只需在nginx配置文件配一下域名就可以自动获取ssl，想尝试自己build镜像的把这行注释掉，把下面注释的内容放开即可。
-    build:
-      context: ./openresty
-      args:
-        - INSTALL_SSL=${OPENRESTY_INSTALL_SSL}
-        - INSTALL_MONGO_MOOGOO=${OPENRESTY_INSTALL_MONGO_MOOGOO}
-        - INSTALL_MONGO_MONGOL=${OPENRESTY_INSTALL_MONGO_MONGOL}
-        - INSTALL_POSTGRES=${OPENRESTY_INSTALL_POSTGRES}
-        - INSTALL_FISH=${OPENRESTY_INSTALL_FISH}
-        - INSTALL_NETTOOLS=${OPENRESTY_INSTALL_NETTOOLS}
-        - INSTALL_INOTIFY_TOOLS=${OPENRESTY_INSTALL_INOTIFY_TOOLS}
+    image: dkdnet/openresty:1.21.4.1 #此镜像由./openresty/Dockerfile生成，在香港机器上build成功，安装了lor框架和lua-resty-auto-ssl,只需在nginx配置文件配一下域名就可以自动获取ssl，想尝试自己build镜像的把这行注释掉，把下面注释的内容放开即可。
+#    build:
+#      context: ./openresty
+#      args:
+#        - INSTALL_SSL=${OPENRESTY_INSTALL_SSL}
+#        - INSTALL_MONGO_MOOGOO=${OPENRESTY_INSTALL_MONGO_MOOGOO}
+#        - INSTALL_MONGO_MONGOL=${OPENRESTY_INSTALL_MONGO_MONGOL}
+#        - INSTALL_POSTGRES=${OPENRESTY_INSTALL_POSTGRES}
+#        - INSTALL_FISH=${OPENRESTY_INSTALL_FISH}
+#        - INSTALL_NETTOOLS=${OPENRESTY_INSTALL_NETTOOLS}
+#        - INSTALL_INOTIFY_TOOLS=${OPENRESTY_INSTALL_INOTIFY_TOOLS}
     volumes:
       - ${APP_CODE_PATH_HOST}:/www/code # 注意必须是 /xxx,不能是/root/xxx,否则会404
     ports:
